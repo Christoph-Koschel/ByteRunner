@@ -1,0 +1,39 @@
+%entry main
+%include "./test/src/natives.hasm"
+%define msg "Hallo"
+%define offset ""
+
+; needs an address point on top of the stack
+store_var:
+    swap 1
+    push 69
+    write32
+    ret
+
+; needs an address point on top of the stack
+load_var:
+    swap 1
+    read32
+    swap 1
+    ret
+
+dump_mem:
+    push 0
+    push 20
+    int dump_memory
+    ret
+
+main:
+    call dump_mem
+    push offset
+    call store_var
+    call dump_mem
+
+    push 420
+    push offset
+    call load_var
+
+    plusi
+    int print_i64
+    call dump_mem
+    halt

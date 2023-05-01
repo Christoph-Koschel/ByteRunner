@@ -18,6 +18,7 @@ images
 test/temp
 test/src/**/*
 !test/src/**/*.basm
+!test/src/**/*.hasm
 
 basm
 basm2nasm

@@ -70,7 +70,6 @@ int main(int argc, char **argv) {
     } else {
         while (limit != 0 && !br.halt) {
             br_dump_stack(stdout, &br);
-//            br_dump_memory(stdout, &br);
             printf("Instruction: %s %ld\n",
                    inst_asm_name(br.program[br.ip].type),
                    br.program[br.ip].operand.as_u64);
