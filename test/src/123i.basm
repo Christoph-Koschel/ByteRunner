@@ -1,0 +1,11 @@
+%entry main
+%include "./test/src/natives.hasm"
+
+main:
+    push 1
+    push 2
+    push 3
+    plusi
+    plusi
+    int print_i64
+    halt

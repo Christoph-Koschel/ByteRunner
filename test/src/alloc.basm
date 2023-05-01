@@ -1,0 +1,11 @@
+%entry main
+%include "./test/src/natives.hasm"
+%define size 420
+
+main:
+    push size
+    int alloc
+    push size
+    int print_u64
+    int free
+    halt

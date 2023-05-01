@@ -1,0 +1,104 @@
+%entry main
+%include "./test/src/natives.hasm"
+
+%define secret "Uryyb jbeyq! Sebz EBG13."
+%define length ""
+
+%define ROT13 13
+%define MOD   26
+
+%define A 65
+%define Z 90
+%define a 97
+%define z 122
+
+; high >= value >= low
+is_between:
+    swap 3
+    swap 1
+    dup 1
+    gei
+    swap 2
+    gei
+    andb
+    swap 1
+    ret
+
+rot13:
+    swap 2
+    dup 1
+    minusi
+    push ROT13
+    plusi
+    push MOD
+    modi
+    plusi
+    swap 1
+    ret
+
+main:
+    push 0
+
+loop:
+    dup 0
+    read8
+
+    upper_case:
+        dup 0
+        push A
+        push Z
+        call is_between
+        not
+        jmpif lower_case
+
+        push A      ; lower bound
+        call rot13
+
+        dup 1
+        swap 1
+        write8
+
+        jmp inc
+
+    lower_case:
+        dup 0
+        push a
+        push z
+        call is_between
+        not
+        jmpif not_a_rot_char
+
+        push a      ; lower bound
+        call rot13
+
+        dup 1
+        swap 1
+        write8
+
+        jmp inc
+
+    not_a_rot_char:
+        pop
+
+    inc:
+        push 1
+        plusi
+
+        dup 0
+        push length
+        eqi
+        not
+        jmpif loop
+
+print:
+    push length
+    push 10
+    write8
+
+    push 0
+    push 1
+    push length
+    plusi
+    int write
+
+    halt

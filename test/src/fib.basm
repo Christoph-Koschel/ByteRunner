@@ -1,0 +1,26 @@
+%entry main
+%include "./test/src/natives.hasm"
+%define N 30
+
+main:
+    ; First two Fibonacci numbers
+    push 0
+    push 1
+    push N
+loop:
+    swap 2
+    dup 0
+    int print_i64
+    dup 1
+    plusi
+    swap 1
+    swap 2
+    push 1
+    minusi
+    dup 0
+    push 0
+    eqi
+    not
+
+    jmpif loop ; Repeat
+    halt

@@ -1,0 +1,41 @@
+%entry main
+%include "./test/src/natives.hasm"
+
+main:
+    push 4.0
+    push 3.0
+    push 750000
+
+loop:
+    swap 2
+
+    push 4.0
+    dup 2
+    push 2.0
+    plusf
+    swap 3
+
+    divf
+    minusf
+
+    push 4.0
+    dup 2
+    push 2.0
+    plusf
+    swap 3
+
+    divf
+    plusf
+
+    swap 2
+    push 1
+    minusi
+
+    dup 0
+    jmpif loop
+end:
+    multi
+    minusi
+
+    int print_f64
+    halt

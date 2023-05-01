@@ -1,0 +1,26 @@
+# Project files
+.idea
+.vc
+
+# C#
+bin
+obj
+
+# NodeJS
+node_modules
+
+# Special folders & files
+dist
+out
+*.log
+
+images
+test/temp
+test/src/**/*
+!test/src/**/*.basm
+
+basm
+basm2nasm
+dbasm
+br
+Makefile

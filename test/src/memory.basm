@@ -1,0 +1,28 @@
+%entry main
+%include "./test/src/natives.hasm"
+
+%define N 256
+
+main:
+    push 0
+loop:
+    dup 0
+    dup 0
+    write8
+
+    push 1
+    plusi
+
+    dup 0
+    push N
+
+    eqi
+    not
+
+    jmpif loop
+
+    push 0
+    push N
+    int dump_memory
+
+    halt
