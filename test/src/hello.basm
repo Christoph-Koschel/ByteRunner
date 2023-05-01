@@ -2,16 +2,19 @@
 %include "./test/src/natives.hasm"
 
 %define hello "Hello World"
+%define hello_length ""
 
 main:
     push hello
-    push 11
+    push hello_length
     plusi
     push 10
     write8
 
     push hello
-    push 12
+    push hello_length
+    push 1
+    plusi
 
     int write
     halt
