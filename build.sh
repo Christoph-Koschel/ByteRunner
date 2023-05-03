@@ -4,7 +4,7 @@ set -e
 
 CFLAGS="-Wall -Wextra -Wswitch-enum -Wmissing-prototypes -Wimplicit-fallthrough -Wconversion -fno-strict-aliasing -O3 -std=c11 -pedantic"
 CC="/usr/bin/cc"
-LIBBASM="src/libbasm/libbasm.h"
+LIBBASM="src/basm/libbasm.h"
 
 PLATFORM_WINDOWS="WINDOWS"
 PLATFORM_LINUX="LINUX"
@@ -19,7 +19,7 @@ function make_image() {
         mkdir ./images
     fi
 
-    $CC $CFLAGS -o ./images/$PLATFORM.o -D="$PLATFORM" -c ./src/image.c
+    $CC $CFLAGS -o ./images/$PLATFORM.o -D="$PLATFORM" -c ./src/basm/image.c
 }
 
 function compile_raw_tests() {
@@ -139,13 +139,13 @@ echo "==              BUILDING                  =="
 echo "============================================"
 echo ""
 echo "Compile basm"
-$CC $CFLAGS -o basm src/basm.c $LIBBASM
+$CC $CFLAGS -o basm src/basm/basm.c $LIBBASM
 echo "Compile br"
-$CC $CFLAGS -o br src/br.c $LIBBASM
+$CC $CFLAGS -o br src/basm/br.c $LIBBASM
 echo "Compile dbasm"
-$CC $CFLAGS -o dbasm src/dbasm.c $LIBBASM
+$CC $CFLAGS -o dbasm src/basm/dbasm.c $LIBBASM
 echo "Compile basm2nasm"
-$CC $CFLAGS -o basm2nasm src/basm2nasm.c $LIBBASM
+$CC $CFLAGS -o basm2nasm src/basm/basm2nasm.c $LIBBASM
 
 make_image $PLATFORM_LINUX
 

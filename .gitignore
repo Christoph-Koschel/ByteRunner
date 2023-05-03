@@ -20,8 +20,8 @@ test/src/**/*
 !test/src/**/*.basm
 !test/src/**/*.hasm
 
-basm
-basm2nasm
-dbasm
-br
-Makefile
+./basm
+./basm2nasm
+./dbasm
+./br
+./Makefile

@@ -1,7 +1,7 @@
 #define BASM_UTILS
 #define BASM_CREATE
 
-#include "libbasm/libbasm.h"
+#include "libbasm.h"
 #include <inttypes.h>
 
 static void usage(FILE *stream) {

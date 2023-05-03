@@ -1,7 +1,7 @@
 #define BASM_UTILS
 #define BASM_VM
 
-#include "libbasm/libbasm.h"
+#include "libbasm.h"
 
 ByteRunner br = {0};
 

@@ -1,7 +1,7 @@
 #define BASM_UTILS
 #define BASM_VM
 
-#include "./libbasm/libbasm.h"
+#include "libbasm.h"
 
 static Err br_alloc(ByteRunner *br) {
     if (br->stack_size < 1) {
