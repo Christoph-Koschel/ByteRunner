@@ -1,6 +1,7 @@
 # Project files
 .idea
 .vc
+.cmake
 
 # C#
 bin
@@ -20,8 +21,18 @@ test/src/**/*
 !test/src/**/*.basm
 !test/src/**/*.hasm
 
+CMakeFiles
+
 ./basm
 ./basm2nasm
 ./dbasm
 ./br
-./Makefile
+./*.exe
+./*.dll
+./*.dll.a
+./*.so
+
+Testing
+build.ninja
+CMakeCache.txt
+cmake_install.cmake
