@@ -146,6 +146,10 @@ echo "Compile dbasm"
 $CC $CFLAGS -o dbasm src/basm/dbasm.c $LIBBASM
 echo "Compile basm2nasm"
 $CC $CFLAGS -o basm2nasm src/basm/basm2nasm.c $LIBBASM
+echo "Compile libbasm"
+$CC $CFLAGS -fPIC -c src/basm/wrapper.c -o ./libbyterunner.o
+$CC -shared ./libbyterunner.o -o libbyterunner.so
+rm ./libbyterunner.o
 
 make_image $PLATFORM_LINUX
 
