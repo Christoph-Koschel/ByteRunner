@@ -1,8 +1,9 @@
+// define BASM_UTILS every time
 // define BASM_CREATE for implementing create function
 // define BASM_VM for implementing the vm
 
-#ifndef BYTERUNNER_LIBBR_H
-#define BYTERUNNER_LIBBR_H
+#ifndef BYTERUNNER_LIBBASM_H
+#define BYTERUNNER_LIBBASM_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -229,9 +230,6 @@ typedef struct {
     UnresolvedJmp unresolved_jmps[BR_UNRESOLVED_JMPS_CAPACITY];
     size_t unresolved_jmp_size;
 
-    char arena[BR_ASSEMBLY_MEMORY_CAPACITY];
-    size_t arena_size;
-
     Inst program[BR_PROGRAM_CAPACITY];
     size_t program_size;
     InstAddr entry;
@@ -243,6 +241,11 @@ typedef struct {
 
     size_t inc_level;
 } Basm;
+
+typedef struct {
+    char arena[BR_ASSEMBLY_MEMORY_CAPACITY];
+    size_t arena_size;
+} MManager;
 
 PACK(struct BasmFileMeta {
          uint16_t magic;
@@ -261,7 +264,7 @@ typedef struct BasmFileMeta BasmFileMeta;
 /// ========================================
 /// region
 
-void *basm_alloc(Basm *basm, size_t size);
+void *basm_alloc(MManager *manager, size_t size);
 
 size_t basm_save_to_file(Basm *basm, const char *file_path);
 
@@ -273,11 +276,13 @@ void basm_bind_unresolved(Basm *basm, InstAddr addr, StringView label);
 
 Word basm_push_string_to_memory(Basm *basm, StringView sv);
 
+Word basm_push_word_to_memory(Basm *basm, Word value, size_t size);
+
 int basm_translate_literal(Basm *basm, StringView sv, Word *output);
 
-void basm_translate_source(StringView input_file_path, Basm *basm);
+void basm_translate_source(StringView input_file_path, Basm *basm, MManager *manager);
 
-StringView basm_slurp_file(Basm *basm, StringView file_path);
+StringView basm_slurp_file(MManager *manager, StringView file_path);
 
 // endregion
 /// ========================================
@@ -307,11 +312,11 @@ void br_load_program_from_file(ByteRunner *br, const char *file_path);
 #endif
 #ifdef BASM_UTILS
 
-void *basm_alloc(Basm *basm, size_t size) {
-    assert(basm->arena_size + size <= BR_ASSEMBLY_MEMORY_CAPACITY);
+void *basm_alloc(MManager *manager, size_t size) {
+    assert(manager->arena_size + size <= BR_ASSEMBLY_MEMORY_CAPACITY);
 
-    void *result = basm->arena + basm->arena_size;
-    basm->arena_size += size;
+    void *result = manager->arena + manager->arena_size;
+    manager->arena_size += size;
     return result;
 }
 
@@ -520,6 +525,20 @@ Word basm_push_string_to_memory(Basm *basm, StringView sv) {
     return result;
 }
 
+Word basm_push_word_to_memory(Basm *basm, Word value, size_t size) {
+    assert(basm->memory_size + BR_WORD_SIZE <= BR_MEMORY_CAPACITY);
+    Word result = WORD_U64(basm->memory_size);
+    for (size_t i = 0; i < size; i++) {
+        basm->memory[basm->memory_size++] = (value.as_u64 >> i * 8) & 0xFF;
+    }
+
+    if (basm->memory_size > basm->memory_capacity) {
+        basm->memory_capacity = basm->memory_size;
+    }
+
+    return result;
+}
+
 /// ========================================
 /// STRING VIEW
 /// ========================================
@@ -615,8 +634,8 @@ char *shift(int *argc, char ***argv) {
 #endif
 #ifdef BASM_CREATE
 
-StringView basm_slurp_file(Basm *basm, StringView file_path) {
-    char *cstr = basm_alloc(basm, file_path.count + 1);
+StringView basm_slurp_file(MManager *manager, StringView file_path) {
+    char *cstr = basm_alloc(manager, file_path.count + 1);
     if (cstr == NULL) {
         fprintf(stderr, "ERROR: Could not allocate memory for file path: %.*s\n",
                 (int) file_path.count,
@@ -653,7 +672,7 @@ StringView basm_slurp_file(Basm *basm, StringView file_path) {
         exit(1);
     }
 
-    char *buffer = basm_alloc(basm, (size_t) m + 1);
+    char *buffer = basm_alloc(manager, (size_t) m + 1);
     if (buffer == NULL) {
         fclose(f);
         fprintf(stderr, "ERROR: Could not allocate memory for file '%s' : %s\n", cstr,
@@ -705,8 +724,8 @@ int basm_translate_literal(Basm *basm, StringView sv, Word *output) {
     return 1;
 }
 
-void basm_translate_source(StringView input_file_path, Basm *basm) {
-    StringView original_source = basm_slurp_file(basm, input_file_path);
+void basm_translate_source(StringView input_file_path, Basm *basm, MManager *manager) {
+    StringView original_source = basm_slurp_file(manager, input_file_path);
     StringView source = original_source;
     StringView entry_label = {0};
     Word entry = {0};
@@ -761,6 +780,186 @@ void basm_translate_source(StringView input_file_path, Basm *basm) {
                                 line_number);
                         exit(1);
                     }
+                } else if (sv_eq(token, cstr_as_sv("byte"))) {
+                    line = sv_trim(line);
+                    StringView label = sv_chop_by_delim(&line, ' ');
+                    if (label.count > 0) {
+                        StringView value = line;
+                        Word word = {0};
+
+                        if (!basm_translate_literal(basm, value, &word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: `%.*s` is not a number\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) value.count,
+                                    value.data);
+                            exit(1);
+                        }
+
+                        if (value.data[0] == '"' && value.data[value.count - 1] == '"') {
+                            value.data++;
+                            value.count -= 2;
+                            word = basm_push_string_to_memory(basm, value);
+                        } else {
+                            basm_translate_literal(basm, value, &word);
+                            word = basm_push_word_to_memory(basm, word, 1);
+                        }
+
+                        if (!basm_bind_label(basm, label, word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: label `%.*s` is already defined\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) label.count,
+                                    label.data);
+                            exit(1);
+                        }
+                    } else {
+                        fprintf(stderr, "%.*s:%d: ERROR: Pre-processor name is not provided\n",
+                                (int) input_file_path.count,
+                                input_file_path.data,
+                                line_number);
+                        exit(1);
+                    }
+
+                } else if (sv_eq(token, cstr_as_sv("word"))) {
+                    line = sv_trim(line);
+                    StringView label = sv_chop_by_delim(&line, ' ');
+                    if (label.count > 0) {
+                        StringView value = line;
+                        Word word = {0};
+
+                        if (!basm_translate_literal(basm, value, &word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: `%.*s` is not a number\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) value.count,
+                                    value.data);
+                            exit(1);
+                        }
+
+                        if (value.data[0] == '"' && value.data[value.count - 1] == '"') {
+                            value.data++;
+                            value.count -= 2;
+                            word = basm_push_string_to_memory(basm, value);
+                        } else {
+                            basm_translate_literal(basm, value, &word);
+                            word = basm_push_word_to_memory(basm, word, 2);
+                        }
+
+                        if (!basm_bind_label(basm, label, word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: label `%.*s` is already defined\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) label.count,
+                                    label.data);
+                            exit(1);
+                        }
+                    } else {
+                        fprintf(stderr, "%.*s:%d: ERROR: Pre-processor name is not provided\n",
+                                (int) input_file_path.count,
+                                input_file_path.data,
+                                line_number);
+                        exit(1);
+                    }
+
+                } else if (sv_eq(token, cstr_as_sv("dword"))) {
+                    line = sv_trim(line);
+                    StringView label = sv_chop_by_delim(&line, ' ');
+                    if (label.count > 0) {
+                        StringView value = line;
+                        Word word = {0};
+
+                        if (!basm_translate_literal(basm, value, &word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: `%.*s` is not a number\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) value.count,
+                                    value.data);
+                            exit(1);
+                        }
+
+                        if (value.data[0] == '"' && value.data[value.count - 1] == '"') {
+                            value.data++;
+                            value.count -= 2;
+                            word = basm_push_string_to_memory(basm, value);
+                        } else {
+                            basm_translate_literal(basm, value, &word);
+                            word = basm_push_word_to_memory(basm, word, 4);
+                        }
+
+                        if (!basm_bind_label(basm, label, word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: label `%.*s` is already defined\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) label.count,
+                                    label.data);
+                            exit(1);
+                        }
+                    } else {
+                        fprintf(stderr, "%.*s:%d: ERROR: Pre-processor name is not provided\n",
+                                (int) input_file_path.count,
+                                input_file_path.data,
+                                line_number);
+                        exit(1);
+                    }
+
+                } else if (sv_eq(token, cstr_as_sv("qword"))) {
+                    line = sv_trim(line);
+                    StringView label = sv_chop_by_delim(&line, ' ');
+                    if (label.count > 0) {
+                        StringView value = line;
+                        Word word = {0};
+
+                        if (!basm_translate_literal(basm, value, &word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: `%.*s` is not a number\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) value.count,
+                                    value.data);
+                            exit(1);
+                        }
+
+                        if (value.data[0] == '"' && value.data[value.count - 1] == '"') {
+                            value.data++;
+                            value.count -= 2;
+                            word = basm_push_string_to_memory(basm, value);
+                        } else {
+                            basm_translate_literal(basm, value, &word);
+                            word = basm_push_word_to_memory(basm, word, 8);
+                        }
+
+                        if (!basm_bind_label(basm, label, word)) {
+                            fprintf(stderr,
+                                    "%.*s:%d: ERROR: label `%.*s` is already defined\n",
+                                    (int) input_file_path.count,
+                                    input_file_path.data,
+                                    line_number,
+                                    (int) label.count,
+                                    label.data);
+                            exit(1);
+                        }
+                    } else {
+                        fprintf(stderr, "%.*s:%d: ERROR: Pre-processor name is not provided\n",
+                                (int) input_file_path.count,
+                                input_file_path.data,
+                                line_number);
+                        exit(1);
+                    }
+
                 } else if (sv_eq(token, cstr_as_sv("include"))) {
                     line = sv_trim(line);
                     if (line.count > 0) {
@@ -776,7 +975,7 @@ void basm_translate_source(StringView input_file_path, Basm *basm) {
                                 exit(1);
                             }
                             basm->inc_level++;
-                            basm_translate_source(line, basm);
+                            basm_translate_source(line, basm, manager);
                             basm->inc_level--;
                         } else {
                             fprintf(stderr,
@@ -1010,6 +1209,8 @@ const char *err_as_cstr(Err err) {
             assert(0 && "err_as_cstr: Unreachable");
             break;
     }
+
+    return "";
 }
 
 void br_load_program_from_file(ByteRunner *br, const char *file_path) {

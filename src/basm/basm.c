@@ -4,6 +4,7 @@
 #include "libbasm.h"
 
 Basm basm = {0};
+MManager manager = {0};
 
 static void usage(FILE *stream, const char *program) {
     fprintf(stream, "Usage: %s [-o <output>] <input>\n", program);
@@ -28,6 +29,7 @@ int main(int argc, char **argv) {
             if (input_file_path != NULL) {
                 usage(stderr, program);
                 fprintf(stderr, "ERROR: Unknown flag '%s'\n", flag);
+                return 1;
             }
 
             input_file_path = flag;
@@ -40,7 +42,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    basm_translate_source(cstr_as_sv(input_file_path), &basm);
+    basm_translate_source(cstr_as_sv(input_file_path), &basm, &manager);
 
     if (!basm.has_entry) {
         fprintf(stderr,
@@ -54,7 +56,7 @@ int main(int argc, char **argv) {
     size_t written_size = basm_save_to_file(&basm, output_file_path);
 
 
-    printf("%zd bytes of memory used\n", basm.arena_size);
+    printf("%zd bytes of memory used\n", manager.arena_size);
     printf("%zd bytes written to file\n", written_size);
     printf("Entry point at 0x%08X\n", (uint32_t) basm.entry);
 

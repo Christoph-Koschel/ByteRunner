@@ -1,0 +1,27 @@
+%entry main
+%include "./test/src/natives.hasm"
+
+%define Hello "WASD"
+%qword MY_INT 255
+
+dump_mem:
+    push 0
+    push 20
+    int dump_memory
+    ret
+
+main:
+    call dump_mem
+    push MY_INT
+    read64
+    int print_i64
+
+    push MY_INT
+    push 7583758
+    write64
+    call dump_mem
+
+    push MY_INT
+    read64
+    int print_i64
+    halt

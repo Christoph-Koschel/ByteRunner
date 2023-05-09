@@ -9,6 +9,7 @@ static void usage(FILE *stream) {
 }
 
 Basm basm = {0};
+MManager manager = {0};
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -17,7 +18,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    basm_translate_source(cstr_as_sv(argv[1]), &basm);
+    basm_translate_source(cstr_as_sv(argv[1]), &basm, &manager);
 
     printf("bits 64\n\n");
     printf("%%define STDOUT 1\n");
